@@ -11,3 +11,9 @@ This project uses [Deno](https://docs.deno.com/runtime/manual/#install-deno).
 ```bash
 deno task setup
 ```
+
+## Running
+
+```bash
+deno task dev
+```
