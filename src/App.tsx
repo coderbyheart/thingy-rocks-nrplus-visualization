@@ -1,13 +1,8 @@
 import type { Component } from 'npm:solid-js'
-import Comp from './Comp.tsx'
+import { Devices } from './Devices.tsx'
 
 const App: Component = () => {
-  return (
-    <>
-      <h1>Hello world!!!!</h1>
-      <Comp />
-    </>
-  )
+  return <Devices />
 }
 
 export default App
