@@ -4,6 +4,9 @@
 
 Visualization for DECT NR+ deployments using Nordic Semiconductor long-range chips.
 
+Written using [TypeScript](https://www.typescriptlang.org/), [Vite](https://vitejs.dev/) and
+[Solid](https://www.solidjs.com/).
+
 ## Setup
 
 This project uses [Deno](https://docs.deno.com/runtime/manual/#install-deno).
