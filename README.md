@@ -32,3 +32,4 @@ deno task dev
   import { createSignal } from 'solid-js'
   //                           ^ Relative import path "solid-js" not prefixed with / or ./ or ../deno(import-prefix-missing)
   ```
+- [ ] manage dependencies using [`deno-udd`](https://github.com/hayd/deno-udd)
