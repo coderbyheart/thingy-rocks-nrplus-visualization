@@ -22,7 +22,7 @@ export type NetworkSurvey = {
   role: 'node' | 'sink'
 
   /**
-   * Base-frequency of the spectrum used in MHz
+   * Base-frequency of the spectrum used in MHz.
    *
    * DECT NR+ needs to be configured depending on the country it is deployed in.
    */
