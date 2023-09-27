@@ -15,13 +15,6 @@ export type NetworkSurvey = {
   networkId: NetworkId
 
   /**
-   * A node can act as a sink. There can be multiple sinks in the network.
-   *
-   * Sinks are hard coded.
-   */
-  role: 'node' | 'sink'
-
-  /**
    * Base-frequency of the spectrum used in MHz.
    *
    * DECT NR+ needs to be configured depending on the country it is deployed in.
@@ -34,7 +27,7 @@ export type NetworkSurvey = {
   channel: number
 
   /**
-   * Route cost is the lowest route cost from known peers plus 1.
+   * Route cost of a node is the lowest route cost from known peers plus 1.
    *
    * Sinks have a route cost of 0.
    */
@@ -45,6 +38,7 @@ export type NetworkSurvey = {
    */
   peers: Record<NetworkId, {
     signalStrengthDBm: SignalStrengthDBm
+    // This is the route cost the node advertises
     routeCost: RouteCost
   }>
 
