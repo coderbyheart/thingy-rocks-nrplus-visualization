@@ -33,3 +33,4 @@ deno task dev
   //                           ^ Relative import path "solid-js" not prefixed with / or ./ or ../deno(import-prefix-missing)
   ```
 - [ ] manage dependencies using [`deno-udd`](https://github.com/hayd/deno-udd)
+- [ ] [Renovate support is missing](https://github.com/renovatebot/renovate/issues/6237)https://github.com/renovatebot/renovate/issues/6237
