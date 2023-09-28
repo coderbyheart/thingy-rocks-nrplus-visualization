@@ -1,5 +1,5 @@
 import { assertEquals } from 'https://deno.land/std@0.202.0/assert/assert_equals.ts'
-import { layouter } from './layouter.ts'
+import { layouter, OnVectorsListener } from './layouter.ts'
 import { assertSpyCall, assertSpyCalls, spy } from 'https://deno.land/std@0.202.0/testing/mock.ts'
 
 Deno.test('layouter()', async (t) => {
@@ -24,7 +24,7 @@ Deno.test('layouter()', async (t) => {
       assertSpyCalls(onPositions, 1)
     },
   )
-  /*
+
   await t.step(
     `it should move two nodes apart`,
     () => {
@@ -76,5 +76,4 @@ Deno.test('layouter()', async (t) => {
       })
     },
   )
-  */
 })
