@@ -5,6 +5,7 @@ import solid from 'npm:vite-plugin-solid@^2.7.0'
 
 import 'npm:solid-js@^1.7.2'
 import 'https://esm.sh/solid-js/jsx-runtime'
+import 'npm:@solid-primitives/resize-observer'
 
 const version = Deno.env.get('VERSION') ?? '0.0.0-development'
 const homepage = 'https://github.com/coderbyheart/thingy-rocks-nrplus'

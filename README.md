@@ -21,6 +21,12 @@ deno task setup
 deno task dev
 ```
 
+## Running unit tests
+
+```bash
+deno test
+```
+
 ## Deno related TODOs
 
 - [ ] get commitlint to work: https://github.com/denoland/deno/issues/17175

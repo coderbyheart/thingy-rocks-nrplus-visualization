@@ -2,7 +2,7 @@
 
 import { NetworkSurvey } from './types.ts'
 
-export const survey: NetworkSurvey[] = [
+export const surveys: NetworkSurvey[] = [
   // This sink
   {
     networkId: 1,
@@ -54,4 +54,4 @@ export const survey: NetworkSurvey[] = [
   },
 ]
 
-void survey
+void surveys

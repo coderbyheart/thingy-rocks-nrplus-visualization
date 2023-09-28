@@ -36,11 +36,7 @@ export type NetworkSurvey = {
   /**
    * Lists the other devices this device can see
    */
-  peers: Record<NetworkId, {
-    signalStrengthDBm: SignalStrengthDBm
-    // This is the route cost the node advertises
-    routeCost: RouteCost
-  }>
+  peers: Peers
 
   /**
    * Unix-timestamp in seconds, when this survey was taken
@@ -49,18 +45,29 @@ export type NetworkSurvey = {
 }
 
 /**
+ * Describes a node that is visible to the current node
+ */
+export type Peer = {
+  signalStrengthDBm: SignalStrengthDBm
+  // This is the route cost the node advertises
+  routeCost: RouteCost
+}
+
+export type Peers = Record<NetworkId, Peer>
+
+/**
  * Signal strength in dBm, for now we assume LTE range which is typically around -140 to -40 dBm
  *
  * @example -132
  */
-type SignalStrengthDBm = number
+export type SignalStrengthDBm = number
 
 /**
  * 32-bit network ID of a node
  */
-type NetworkId = number
+export type NetworkId = number
 
 /**
  * >=0
  */
-type RouteCost = number
+export type RouteCost = number
