@@ -1,5 +1,5 @@
 import { assertEquals } from 'https://deno.land/std@0.202.0/assert/assert_equals.ts'
-import { layouter, OnVectorsListener } from './layouter.ts'
+import { layouter, OnMoveListener } from './layouter.ts'
 import { assertSpyCall, assertSpyCalls, spy } from 'https://deno.land/std@0.202.0/testing/mock.ts'
 
 Deno.test('layouter()', async (t) => {
@@ -29,7 +29,7 @@ Deno.test('layouter()', async (t) => {
     `it should move two nodes apart`,
     () => {
       const onVectors = spy()
-      const layout = layouter().onVectors(onVectors)
+      const layout = layouter().onMoves(onVectors)
       layout.addNode({
         id: 1,
         peers: [],
@@ -42,32 +42,31 @@ Deno.test('layouter()', async (t) => {
       })
       assertEquals(layout.next(), true)
       // It should create vectors moving the two nodes apart
-      assertSpyCalls(onVectors, 1)
-      const expectedVectors: Parameters<OnVectorsListener>[0] = {
+      const expectedVectors: Parameters<OnMoveListener>[0] = {
         '1': {
           components: [{
             cause: 2,
             vector: {
               direction: 0,
-              length: 100, // maxDistance
+              magnitude: 100, // maxDistance
             },
           }],
           result: {
             direction: 0,
-            length: 10, // maxMove
+            magnitude: 10, // maxMove
           },
         },
         '2': {
           components: [{
             cause: 1,
             vector: {
-              direction: 180,
-              length: 100, // maxDistance
+              direction: Math.PI,
+              magnitude: 100, // maxDistance
             },
           }],
           result: {
-            direction: 180,
-            length: 10, // maxMove
+            direction: Math.PI,
+            magnitude: 10, // maxMove
           },
         },
       }

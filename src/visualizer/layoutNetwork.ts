@@ -1,5 +1,5 @@
 import { NetworkId } from '../mesh/types.ts'
-import { Layout, Layouter, Node, OnPositionsListener } from './layouter.ts'
+import { Layouter, Node, NodePositions, OnPositionsListener } from './layouter.ts'
 import { degToRad } from './degToRad.ts'
 import { pointAngle } from './pointAngle.ts'
 import { pointDistance } from './pointDistance.ts'
@@ -27,7 +27,7 @@ export const layouter = (
 
   const onPositionListeners: OnPositionsListener[] = []
   const nodes: Record<NetworkId, Node> = {}
-  let layout: Layout = {}
+  let layout: NodePositions = {}
   let running = true
 
   let iteration = 0

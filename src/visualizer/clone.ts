@@ -1,6 +1,6 @@
-import { Layout } from './layouter.ts'
+import { NodePositions } from './layouter.ts'
 
-export const clone = (nodes: Layout): Layout =>
+export const clone = (nodes: NodePositions): NodePositions =>
   Object.entries(nodes).reduce(
     (newNetwork, [id, coordinates]) => ({ ...newNetwork, [id]: [...coordinates] }),
     {},

@@ -1,8 +1,8 @@
-import { Layout } from './layouter.ts'
+import { NodePositions } from './layouter.ts'
 
 export const compareLayouts = (
-  layout1: Layout,
-  layout2: Layout,
+  layout1: NodePositions,
+  layout2: NodePositions,
   gravity = 0.0001,
 ): boolean => {
   // Must contain the same nodes
