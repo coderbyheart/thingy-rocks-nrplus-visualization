@@ -2,6 +2,7 @@ import { NetworkId } from '../mesh/types.ts'
 import { Peers } from '../mesh/types.ts'
 import { clone } from './clone.ts'
 import { compareLayouts } from './compareLayouts.ts'
+import { getPos } from './getPos.ts'
 import { pointDistance } from './pointDistance.ts'
 import { pointEquals } from './pointEquals.ts'
 import { pointToString } from './pointToString.ts'
@@ -153,6 +154,13 @@ export const layouter = (options?: {
 
       onMovesListeners.map((listener) => listener(moves))
 
+      // Move the nodes
+      for (const [id, { result }] of Object.entries(moves)) {
+        const nodePos = newLayout[id] ?? [0, 0]
+        const posDelta = getPos(result)
+        newLayout[id] = [nodePos[0] + posDelta[0], nodePos[1] + posDelta[1]]
+      }
+
       if (compareLayouts(layout, newLayout)) {
         // No change in layout
         running = false
@@ -193,6 +201,6 @@ const samePointDirections = (layout: NodePositions, nodes: Record<NetworkId, Nod
     samePointDirection[pointToString(position)] = pointDetails
     const currentSegment = pointDetails.currentSegment
     pointDetails.currentSegment = (currentSegment + pointDetails.segment) % (Math.PI * 2)
-    return currentSegment
+    return currentSegment > Math.PI ? -(Math.PI * 2 - currentSegment) : currentSegment
   }
 }

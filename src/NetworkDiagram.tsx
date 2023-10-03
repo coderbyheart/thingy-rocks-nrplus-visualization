@@ -4,7 +4,7 @@ import { type Component, createEffect, createSignal, For, onCleanup, onMount, Sh
 import { createResizeObserver } from '@solid-primitives/resize-observer'
 import { surveys } from './mesh/example.ts'
 import { NetworkId, NetworkSurvey } from './mesh/types.ts'
-import { Coordinates, layouter } from './visualizer/layoutNetwork.ts'
+import { Coordinates, layouter } from './visualizer/layouter.ts'
 import { BoundingBox, boundingBox } from './visualizer/boundingBox.ts'
 
 enum Colors {
@@ -42,9 +42,11 @@ const MeshVisualization: Component<{ size: { width: number; height: number } }> 
 
   const layout = layouter({ maxMove: 10 })
   layout.onPositions((positions) => {
+    console.log(`[MeshVisualization] positions`, positions)
     setPositions(positions)
     setBB(boundingBox(Object.values(positions)))
   })
+  layout.onMoves((moves) => console.log(`[MeshVisualization] moves`, moves))
 
   onMount(() => {
     let frame = requestAnimationFrame(loop)
