@@ -33,13 +33,14 @@ export type NodeVectors = {
 type NodeVectorsMap = Record<string, NodeVectors>
 
 export type OnPositionsListener = (positions: NodePositions) => unknown
-export type NodeMoves = Record<string, {
-  components: NodeVectors
-  result: Vector
-}>
-export type OnMoveListener = (
-  moves: NodeMoves,
-) => unknown
+export type NodeMoves = Record<
+  string,
+  {
+    components: NodeVectors
+    result: Vector
+  }
+>
+export type OnMoveListener = (moves: NodeMoves) => unknown
 export type Layouter = {
   onPositions: (listener: OnPositionsListener) => Layouter
   onMoves: (listener: OnMoveListener) => Layouter
@@ -129,13 +130,11 @@ export const layouter = (options?: {
             // Filter out peers
             .filter((id) => node.peers[id] === undefined)
             // Calculate the distance to these nodes
-            .map(
-              (id) => {
-                const position = newLayout[id] ?? [0, 0]
-                const distance = pointDistance(position, nodePos)
-                return ({ id: id, position, distance })
-              },
-            )
+            .map((id) => {
+              const position = newLayout[id] ?? [0, 0]
+              const distance = pointDistance(position, nodePos)
+              return { id: id, distance }
+            })
             // and remove those that are too far away
             .filter((node) => node.distance < force)
         ) {
@@ -143,14 +142,7 @@ export const layouter = (options?: {
             cause: neighbour.id,
             vector: {
               direction: getNodeDirection(node, neighbour),
-              magnitude: Math.max(
-                0,
-                Math.min(
-                  force -
-                    // ... halve the distance, because nodes will push each other
-                    (neighbour.distance / 2),
-                ),
-              ),
+              magnitude: force / 2, // ... halve the distance, because nodes will push each other
             },
           })
         }
@@ -160,22 +152,14 @@ export const layouter = (options?: {
         for (const [peerId, attraction] of Object.entries(node.peers)) {
           const peerPosition = newLayout[peerId] ?? [0, 0]
           const distance = pointDistance(nodePos, peerPosition)
+          const desiredDistance = force * attraction
           vectors.push({
             cause: peerId,
             vector: {
-              direction: (getNodeDirection(node, { id: peerId }) -
-                    // Move towards the node
-                    Math.PI) % Math.PI * 2,
-              magnitude:
-                // Close the gap
-                Math.max(
-                  distance,
-                  // Min distance should be based on attraction
-                  // the higher the attraction the closer the distance
-                  (force - force * attraction) /
-                    // ... halve the attraction, because nodes will attract each other
-                    2,
-                ),
+              direction: getNodeDirection(node, { id: peerId }),
+              magnitude: (desiredDistance - distance) /
+                // ... halve the attraction, because nodes will attract each other
+                2,
             },
           })
         }
@@ -226,17 +210,24 @@ const numberOfNodesOnPoint = (
   nodes: Record<NetworkId, Node>,
   point: Coordinates,
 ): number =>
-  Object.keys(nodes).map((id) => layout[id] ?? [0, 0]).filter((pos) => pointEquals(point, pos))
-    .length
+  Object.keys(nodes)
+    .map((id) => layout[id] ?? [0, 0])
+    .filter((pos) => pointEquals(point, pos)).length
 
-const samePointDirections = (layout: NodePositions, nodes: Record<NetworkId, Node>) => {
-  const samePointDirection: Record<string, {
-    segment: number
-    currentSegment: number
-  }> = {}
+const samePointDirections = (
+  layout: NodePositions,
+  nodes: Record<NetworkId, Node>,
+) => {
+  const samePointDirection: Record<
+    string,
+    {
+      segment: number
+      currentSegment: number
+    }
+  > = {}
   return (position: Coordinates): number => {
     const pointDetails = samePointDirection[pointToString(position)] ?? {
-      segment: Math.PI * 2 / numberOfNodesOnPoint(layout, nodes, position),
+      segment: (Math.PI * 2) / numberOfNodesOnPoint(layout, nodes, position),
       currentSegment: 0,
     }
     samePointDirection[pointToString(position)] = pointDetails
@@ -246,7 +237,10 @@ const samePointDirections = (layout: NodePositions, nodes: Record<NetworkId, Nod
   }
 }
 
-const nodeDirection = (layout: NodePositions, nodes: Record<NetworkId, Node>) => {
+const nodeDirection = (
+  layout: NodePositions,
+  nodes: Record<NetworkId, Node>,
+) => {
   const nodeDirections: Record<string, number> = {}
   const getNextDirection = samePointDirections(layout, nodes)
 
