@@ -7,6 +7,7 @@ Deno.test('pointDirection()', async (t) => {
     const [point1, point2, expectedAngle] of [
       [[0, 0], [0, 0], 0],
       [[0, 0], [1, 0], 0],
+      [[1, 0], [0, 0], Math.PI],
       [[0, 0], [0, 1], Math.PI / 2],
       [[0, 0], [0, -1], -Math.PI / 2],
       [[0, 0], [-1, 0], Math.PI],

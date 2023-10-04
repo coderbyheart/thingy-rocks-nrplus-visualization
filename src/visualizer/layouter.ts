@@ -3,6 +3,7 @@ import { Peers } from '../mesh/types.ts'
 import { clone } from './clone.ts'
 import { compareLayouts } from './compareLayouts.ts'
 import { getPos } from './getPos.ts'
+import { pointDirection } from './pointDirection.ts'
 import { pointDistance } from './pointDistance.ts'
 import { pointEquals } from './pointEquals.ts'
 import { pointToString } from './pointToString.ts'
@@ -117,26 +118,30 @@ export const layouter = (options?: {
             },
           ).filter((node) => node.distance < force)
         ) {
-          if (pointEquals(nodePos, neighbour.position)) {
+          const neighborPos = neighbour.position
+
+          const direction =
             // There are nodes on the same point, so there is no "direction" between them.
-            // -> move them away using circle segments
-            const direction = getNextDirection(nodePos)
-            vectors.push({
-              cause: neighbour.id,
-              vector: {
-                direction,
-                magnitude: Math.max(
-                  0,
-                  Math.min(
-                    // Nodes should have force distance
-                    force -
-                      // ... halve the distance, because nodes will push each other
-                      (neighbour.distance / 2),
-                  ),
+            pointEquals(nodePos, neighborPos)
+              // -> move them away using circle segments
+              ? getNextDirection(nodePos)
+              // -> move points away from each other
+              : (pointDirection(nodePos, neighborPos) - Math.PI) % (Math.PI * 2)
+          vectors.push({
+            cause: neighbour.id,
+            vector: {
+              direction,
+              magnitude: Math.max(
+                0,
+                Math.min(
+                  // Nodes should have force distance
+                  force -
+                    // ... halve the distance, because nodes will push each other
+                    (neighbour.distance / 2),
                 ),
-              },
-            })
-          }
+              ),
+            },
+          })
         }
       }
 
