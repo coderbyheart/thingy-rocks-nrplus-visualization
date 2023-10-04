@@ -1,5 +1,4 @@
 import { NetworkId } from '../mesh/types.ts'
-import { Peers } from '../mesh/types.ts'
 import { clone } from './clone.ts'
 import { compareLayouts } from './compareLayouts.ts'
 import { getPos } from './getPos.ts'
@@ -10,12 +9,15 @@ import { pointToString } from './pointToString.ts'
 import { vectorSum } from './vectorSum.ts'
 
 export type NodePositions = Record<string, Coordinates>
-
 export type Coordinates = [number, number]
+/**
+ * A float between 0 and 1
+ */
+export type Attraction = number
+export type NodeID = string
 export type Node = {
-  id: number
-  routeCost: number
-  peers: Peers
+  id: NodeID
+  peers: Record<NodeID, Attraction>
 }
 
 export type Vector = {
@@ -24,14 +26,14 @@ export type Vector = {
 }
 
 export type NodeVectors = {
-  cause: number
+  cause: NodeID
   vector: Vector
 }[]
 
 type NodeVectorsMap = Record<string, NodeVectors>
 
 export type OnPositionsListener = (positions: NodePositions) => unknown
-type NodeMoves = Record<string, {
+export type NodeMoves = Record<string, {
   components: NodeVectors
   result: Vector
 }>
@@ -70,7 +72,7 @@ export const layouter = (options?: {
 }): Layouter => {
   const onPositionListeners: OnPositionsListener[] = []
   const onMovesListeners: OnMoveListener[] = []
-  const nodes: Record<NetworkId, Node> = {}
+  const nodes: Record<NodeID, Node> = {}
   const force = options?.force ?? 100
   const maxMove = options?.maxMove ?? 10
   let running = true
@@ -88,6 +90,17 @@ export const layouter = (options?: {
     },
     addNode: (node) => {
       nodes[node.id] = node
+      // Place all peers
+      for (const [peer, attraction] of Object.entries(node.peers)) {
+        if (nodes[peer] === undefined) {
+          nodes[peer] = {
+            id: peer,
+            peers: {
+              [node.id]: attraction,
+            },
+          }
+        }
+      }
       // Restart animation in case it was stopped
       running = true
       return l
@@ -98,9 +111,8 @@ export const layouter = (options?: {
       }
 
       const newLayout = clone(layout)
-
-      const getNextDirection = samePointDirections(layout, nodes)
       const nodeVectors: NodeVectorsMap = {}
+      const getNodeDirection = nodeDirection(newLayout, nodes)
 
       for (const node of Object.values(nodes)) {
         // Place node
@@ -108,38 +120,62 @@ export const layouter = (options?: {
         if (newLayout[node.id] === undefined) newLayout[node.id] = nodePos
         const vectors: NodeVectors = nodeVectors[node.id] ?? []
         nodeVectors[node.id] = vectors
-        // Move away from all other nodes
-        for (
-          const neighbour of Object.keys(nodes).filter((id) => parseInt(id, 10) !== node.id).map(
-            (id) => {
-              const position = newLayout[id] ?? [0, 0]
-              const distance = pointDistance(position, nodePos)
-              return ({ id: parseInt(id, 10), position, distance })
-            },
-          ).filter((node) => node.distance < force)
-        ) {
-          const neighborPos = neighbour.position
 
-          const direction =
-            // There are nodes on the same point, so there is no "direction" between them.
-            pointEquals(nodePos, neighborPos)
-              // -> move them away using circle segments
-              ? getNextDirection(nodePos)
-              // -> move points away from each other
-              : (pointDirection(nodePos, neighborPos) - Math.PI) % (Math.PI * 2)
+        // Move away from all nodes that are not peers and close by
+        for (
+          const neighbour of Object.keys(nodes)
+            // Filter out myself
+            .filter((id) => id !== node.id)
+            // Filter out peers
+            .filter((id) => node.peers[id] === undefined)
+            // Calculate the distance to these nodes
+            .map(
+              (id) => {
+                const position = newLayout[id] ?? [0, 0]
+                const distance = pointDistance(position, nodePos)
+                return ({ id: id, position, distance })
+              },
+            )
+            // and remove those that are too far away
+            .filter((node) => node.distance < force)
+        ) {
           vectors.push({
             cause: neighbour.id,
             vector: {
-              direction,
+              direction: getNodeDirection(node, neighbour),
               magnitude: Math.max(
                 0,
                 Math.min(
-                  // Nodes should have force distance
                   force -
                     // ... halve the distance, because nodes will push each other
                     (neighbour.distance / 2),
                 ),
               ),
+            },
+          })
+        }
+
+        // Move towards peers
+        // FIXME: push apart if too close together, e.g. in iteration 0
+        for (const [peerId, attraction] of Object.entries(node.peers)) {
+          const peerPosition = newLayout[peerId] ?? [0, 0]
+          const distance = pointDistance(nodePos, peerPosition)
+          vectors.push({
+            cause: peerId,
+            vector: {
+              direction: (getNodeDirection(node, { id: peerId }) -
+                    // Move towards the node
+                    Math.PI) % Math.PI * 2,
+              magnitude:
+                // Close the gap
+                Math.max(
+                  distance,
+                  // Min distance should be based on attraction
+                  // the higher the attraction the closer the distance
+                  (force - force * attraction) /
+                    // ... halve the attraction, because nodes will attract each other
+                    2,
+                ),
             },
           })
         }
@@ -207,5 +243,26 @@ const samePointDirections = (layout: NodePositions, nodes: Record<NetworkId, Nod
     const currentSegment = pointDetails.currentSegment
     pointDetails.currentSegment = (currentSegment + pointDetails.segment) % (Math.PI * 2)
     return currentSegment > Math.PI ? -(Math.PI * 2 - currentSegment) : currentSegment
+  }
+}
+
+const nodeDirection = (layout: NodePositions, nodes: Record<NetworkId, Node>) => {
+  const nodeDirections: Record<string, number> = {}
+  const getNextDirection = samePointDirections(layout, nodes)
+
+  return (nodeA: { id: string }, nodeB: { id: string }): number => {
+    const key = `${nodeA.id}->${nodeB.id}`
+    if (nodeDirections[key] === undefined) {
+      const nodeAPos = layout[nodeA.id] ?? [0, 0]
+      const nodeBPos = layout[nodeB.id] ?? [0, 0]
+      nodeDirections[key] =
+        // There are nodes on the same point, so there is no "direction" between them.
+        pointEquals(nodeAPos, nodeBPos)
+          // -> move them away using circle segments
+          ? getNextDirection(nodeAPos)
+          // -> use direction between them
+          : pointDirection(nodeBPos, nodeAPos)
+    }
+    return nodeDirections[key]
   }
 }
