@@ -9,6 +9,7 @@ import { BoundingBox, boundingBox } from './visualizer/boundingBox.ts'
 
 enum Colors {
   highlight = '#00FF00',
+  helpers = '#ff61dd88',
 }
 
 export const NetworkDiagram = () => {
@@ -24,7 +25,7 @@ export const NetworkDiagram = () => {
   })
 
   return (
-    <div ref={ref} style={{ height: '100%', 'max-height': '100vh' }}>
+    <div ref={ref} style={{ height: '100%', 'max-height': '100vh', 'min-height': '50vh' }}>
       <Show when={size().width > 0}>
         <MeshVisualization size={size()} />
       </Show>
@@ -40,7 +41,7 @@ const MeshVisualization: Component<{ size: { width: number; height: number } }> 
   const [positions, setPositions] = createSignal<Record<NetworkId, Coordinates>>({})
   const [bb, setBB] = createSignal<BoundingBox>({ width: 0, height: 0 })
 
-  const layout = layouter({ maxMove: 10 })
+  const layout = layouter({ maxMove: 1 })
   layout.onPositions((positions) => {
     console.log(`[MeshVisualization] positions`, positions)
     setPositions(positions)
@@ -102,15 +103,28 @@ const MeshVisualization: Component<{ size: { width: number; height: number } }> 
       version='1.1'
       xmlns='http://www.w3.org/2000/svg'
     >
-      <circle
-        fill={'none'}
-        stroke={Colors.highlight}
+      {/* Border */}
+      <path
+        d={`M 1,1 L ${width - 1},1 L ${width - 1},${height - 1} 1,${height - 1} L 1,1`}
         stroke-width={1}
-        stroke-linecap={'round'}
-        stroke-linejoin={'round'}
-        cx={width / 2}
-        cy={height / 2}
-        r={1}
+        fill={'none'}
+        stroke={Colors.helpers}
+        stroke-dasharray='2 2'
+      />
+      {/* Center */}
+      <path
+        d={`M 1,${height / 2} L ${width - 1},${height / 2}`}
+        stroke-width={1}
+        fill={'none'}
+        stroke={Colors.helpers}
+        stroke-dasharray='2 2'
+      />
+      <path
+        d={`M ${width / 2},1 L ${width / 2},${height - 1}`}
+        stroke-width={1}
+        fill={'none'}
+        stroke={Colors.helpers}
+        stroke-dasharray='2 2'
       />
       <For each={Object.entries(positions())}>
         {([nodeId, position]) => {
