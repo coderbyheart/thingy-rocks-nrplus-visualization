@@ -1,15 +1,26 @@
 // @deno-types="npm:solid-js"
-import { type Component, createEffect, createSignal, For, onCleanup, onMount, Show } from 'solid-js'
+import {
+  batch,
+  type Component,
+  createEffect,
+  createSignal,
+  For,
+  onCleanup,
+  onMount,
+  Show,
+} from 'solid-js'
 // @deno-types="npm:@solid-primitives/resize-observer"
 import { createResizeObserver } from '@solid-primitives/resize-observer'
 import { surveys } from './mesh/example.ts'
 import { NetworkId, NetworkSurvey } from './mesh/types.ts'
-import { Coordinates, layouter } from './visualizer/layouter.ts'
+import { Coordinates, layouter, NodeMoves, NodePositions } from './visualizer/layouter.ts'
 import { BoundingBox, boundingBox } from './visualizer/boundingBox.ts'
+import { radToDeg } from './visualizer/radToDeg.ts'
 
 enum Colors {
   highlight = '#00FF00',
   helpers = '#ff61dd88',
+  forces = '#5f9efb',
 }
 
 export const NetworkDiagram = () => {
@@ -25,7 +36,13 @@ export const NetworkDiagram = () => {
   })
 
   return (
-    <div ref={ref} style={{ height: '100%', 'max-height': '100vh', 'min-height': '50vh' }}>
+    <div
+      ref={ref}
+      style={{ height: '100%', 'max-height': '100vh', 'min-height': '50vh' }}
+      onScroll={() => {
+        console.log(`scroll`)
+      }}
+    >
       <Show when={size().width > 0}>
         <MeshVisualization size={size()} />
       </Show>
@@ -38,16 +55,18 @@ const MeshVisualization: Component<{ size: { width: number; height: number } }> 
 ) => {
   const width = props.size.width
   const height = props.size.height
-  const [positions, setPositions] = createSignal<Record<NetworkId, Coordinates>>({})
+  const [positions, setPositions] = createSignal<NodePositions>({})
+  const [moves, setMoves] = createSignal<NodeMoves>({})
   const [bb, setBB] = createSignal<BoundingBox>({ width: 0, height: 0 })
 
   const layout = layouter({ maxMove: 1 })
-  layout.onPositions((positions) => {
-    console.log(`[MeshVisualization] positions`, positions)
-    setPositions(positions)
-    setBB(boundingBox(Object.values(positions)))
+  layout.onPositions((positions, moves) => {
+    batch(() => {
+      setPositions(positions)
+      setMoves(moves)
+      setBB(boundingBox(Object.values(positions)))
+    })
   })
-  layout.onMoves((moves) => console.log(`[MeshVisualization] moves`, moves))
 
   onMount(() => {
     let frame = requestAnimationFrame(loop)
@@ -79,20 +98,62 @@ const MeshVisualization: Component<{ size: { width: number; height: number } }> 
   */
   createEffect(() => {
     layout.addNode({
-      id: 1,
-      routeCost: 0,
-      peers: {},
+      id: '1',
+      peers: {
+        2: 0.125,
+        3: 0.25,
+        4: 0.375,
+        5: 0.5,
+        6: 0.625,
+        7: 0.75,
+        8: 0.875,
+        9: 1,
+      },
     })
     layout.addNode({
-      id: 2,
-      routeCost: 0,
-      peers: {},
+      id: '10',
+      peers: {
+        '11': 0.5,
+      },
     })
     layout.addNode({
-      id: 3,
-      routeCost: 0,
-      peers: {},
+      id: '11',
+      peers: {
+        '12': 0.5,
+      },
     })
+    layout.addNode({
+      id: '12',
+      peers: {
+        '13': 0.5,
+      },
+    })
+    layout.addNode({
+      id: '13',
+      peers: {
+        '14': 0.5,
+      },
+    })
+    layout.addNode({
+      id: '14',
+      peers: {
+        '15': 0.5,
+      },
+    })
+    layout.addNode({
+      id: '15',
+      peers: {
+        '16': 0.5,
+      },
+    }),
+      layout.addNode({
+        id: '21',
+        peers: {
+          22: 1,
+          23: 0.5,
+          24: 0.25,
+        },
+      })
   })
 
   return (
@@ -128,6 +189,7 @@ const MeshVisualization: Component<{ size: { width: number; height: number } }> 
       />
       <For each={Object.entries(positions())}>
         {([nodeId, position]) => {
+          const node = layout.node(nodeId)
           return (
             <>
               <circle
@@ -150,7 +212,56 @@ const MeshVisualization: Component<{ size: { width: number; height: number } }> 
               >
                 {nodeId}
               </text>
+              <For each={Object.keys(node?.peers ?? {})}>
+                {(peerId) => {
+                  const peer = layout.node(peerId)
+                  if (peer === undefined) return null
+                  return (
+                    <path
+                      d={`M ${position[0] + (width / 2)},${position[1] + (height / 2)} L ${
+                        peer.position[0] + (width / 2)
+                      },${peer.position[1] + (height / 2)}`}
+                      stroke-width={1}
+                      stroke={Colors.highlight}
+                      fill={'none'}
+                    />
+                  )
+                }}
+              </For>
             </>
+          )
+        }}
+      </For>
+      <For each={Object.entries(moves())}>
+        {([nodeId, { components }]) => {
+          const node = layout.node(nodeId)
+          if (node === undefined) return null
+          return (
+            <For each={components}>
+              {(component) => (
+                <g
+                  transform={`translate(${node.position[0] + (width / 2)},${
+                    node.position[1] + (height / 2)
+                  }),rotate(${radToDeg(component.vector.direction)})`}
+                >
+                  <path
+                    d={`M 0,0 l ${component.vector.magnitude},0`}
+                    stroke-width={1}
+                    stroke={Colors.forces}
+                    fill={'none'}
+                  />
+                  <text
+                    fill={Colors.forces}
+                    font-size={'10'}
+                    x={component.vector.magnitude / 2}
+                    y={0}
+                    text-anchor='middle'
+                  >
+                    {`${component.cause} - ${Math.round(component.vector.magnitude)} → ${node.id}`}
+                  </text>
+                </g>
+              )}
+            </For>
           )
         }}
       </For>
