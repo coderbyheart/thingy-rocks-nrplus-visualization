@@ -1,6 +1,6 @@
 import { assertEquals } from 'https://deno.land/std@0.202.0/assert/assert_equals.ts'
-import { layouter, NodeMoves, NodePositions, OnMoveListener } from './layouter.ts'
-import { assertSpyCall, assertSpyCalls, spy } from 'https://deno.land/std@0.202.0/testing/mock.ts'
+import { layouter, NodeMoves, NodePositions, OnPositionsListener } from './layouter.ts'
+import { assertSpyCalls, spy } from 'https://deno.land/std@0.202.0/testing/mock.ts'
 import { assertAlmostEquals } from 'https://deno.land/std@0.202.0/assert/mod.ts'
 import { pointDistance } from './pointDistance.ts'
 
@@ -16,12 +16,8 @@ Deno.test('layouter()', async (t) => {
         peers: {},
       })
       assertEquals(layout.next(), true)
-      assertSpyCall(onPositions, 0, {
-        args: [
-          {
-            '1': [0, 0],
-          },
-        ],
+      assertEquals(onPositions.calls[0].args[0], {
+        '1': [0, 0],
       })
       // it should finish without additional nodes
       assertEquals(layout.next(), false)
@@ -29,8 +25,8 @@ Deno.test('layouter()', async (t) => {
     })
 
     await t.step(`it should move two nodes apart`, () => {
-      const onMoves = spy()
-      const layout = layouter().onMoves(onMoves)
+      const onPositions = spy()
+      const layout = layouter().onPositions(onPositions)
       layout.addNode({
         id: '1',
         peers: {},
@@ -41,14 +37,14 @@ Deno.test('layouter()', async (t) => {
       })
       assertEquals(layout.next(), true)
       // It should create vectors moving the two nodes apart
-      const expectedVectors: Parameters<OnMoveListener>[0] = {
+      const expectedVectors: Parameters<OnPositionsListener>[1] = {
         '1': {
           components: [
             {
               cause: '2',
               vector: {
                 direction: 0,
-                magnitude: 50, // force / 2
+                magnitude: 100, // force
               },
             },
           ],
@@ -63,7 +59,7 @@ Deno.test('layouter()', async (t) => {
               cause: '1',
               vector: {
                 direction: Math.PI,
-                magnitude: 50, // force / 2
+                magnitude: 100, // force
               },
             },
           ],
@@ -73,14 +69,12 @@ Deno.test('layouter()', async (t) => {
           },
         },
       }
-      assertSpyCall(onMoves, 0, {
-        args: [expectedVectors],
-      })
+      assertEquals(onPositions.calls[0].args[1], expectedVectors)
     })
 
     await t.step(`it should move three nodes apart`, () => {
-      const onMoves = spy()
-      const layout = layouter().onMoves(onMoves)
+      const onPositions = spy()
+      const layout = layouter().onPositions(onPositions)
       layout.addNode({
         id: '1',
         peers: {},
@@ -95,7 +89,7 @@ Deno.test('layouter()', async (t) => {
       })
       assertEquals(layout.next(), true)
       // It should create vectors moving the two nodes apart
-      const expectedVectors: Parameters<OnMoveListener>[0] = {
+      const expectedVectors: Parameters<OnPositionsListener>[1] = {
         '1': {
           components: [
             {
@@ -164,8 +158,8 @@ Deno.test('layouter()', async (t) => {
         },
       }
 
-      assertSpyCalls(onMoves, 1)
-      const callArgs: Parameters<OnMoveListener>[0] = onMoves.calls[0].args[0]
+      assertSpyCalls(onPositions, 1)
+      const callArgs: Parameters<OnPositionsListener>[1] = onPositions.calls[0].args[1]
       for (const nodeId of ['1', '2', '3']) {
         // Result
         assertAlmostEquals(
@@ -182,10 +176,8 @@ Deno.test('layouter()', async (t) => {
     await t.step(
       `It should keep moving nodes apart until they are beyond the force`,
       () => {
-        const onMoves = spy()
         const onPositions = spy()
         const layout = layouter({ force: 100, maxMove: 10 })
-          .onMoves(onMoves)
           .onPositions(onPositions)
         layout.addNode({
           id: '1',
@@ -216,10 +208,8 @@ Deno.test('layouter()', async (t) => {
 
   await t.step(`Placing connected nodes`, async (t) => {
     await t.step(`It should move connected nodes together`, () => {
-      const onMoves = spy()
       const onPositions = spy()
       const layout = layouter({ force: 100, maxMove: 10 })
-        .onMoves(onMoves)
         .onPositions(onPositions)
       layout.addNode({
         id: '1',
@@ -227,32 +217,25 @@ Deno.test('layouter()', async (t) => {
           '2': 0.5,
         },
       })
-      /*
-
-        console.log(JSON.stringify(onMoves.calls.map(({ args }) => args[0]), null, 2))
-        assertFalse(i === maxCalls, 'Animation should not have been aborted.')
-
-        const positions: NodePositions = onPositions.calls.pop()?.args[0]
-        const nodeDistance12 = pointDistance(positions[1], positions[2])
-        assertAlmostEquals(nodeDistance12, 50, 10)
-      */
 
       assertEquals(layout.next(), true)
-      const moves: NodeMoves = onMoves.calls[0].args[0]
+      const moves: NodeMoves = onPositions.calls[0].args[1]
       // Move first node up by force
       assertEquals(moves['1'].components[0], {
         cause: '2',
         vector: {
           direction: -0,
           magnitude: (100 * // force
-            0.5) / // attraction
-            2, // halved, because nodes attract each other
+            0.5), // attraction
         },
       })
-      // Move second node down by force
       assertEquals(moves['2'].components[0], {
         cause: '1',
-        vector: { direction: Math.PI, magnitude: 25 },
+        vector: {
+          direction: Math.PI,
+          magnitude: (100 * // force
+            0.5), // attraction
+        },
       })
     })
   })

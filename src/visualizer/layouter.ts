@@ -32,7 +32,7 @@ export type NodeVectors = {
 
 type NodeVectorsMap = Record<string, NodeVectors>
 
-export type OnPositionsListener = (positions: NodePositions) => unknown
+export type OnPositionsListener = (positions: NodePositions, moves: NodeMoves) => unknown
 export type NodeMoves = Record<
   string,
   {
@@ -40,10 +40,8 @@ export type NodeMoves = Record<
     result: Vector
   }
 >
-export type OnMoveListener = (moves: NodeMoves) => unknown
 export type Layouter = {
   onPositions: (listener: OnPositionsListener) => Layouter
-  onMoves: (listener: OnMoveListener) => Layouter
   addNode: (node: Node) => Layouter
   /**
    * This calculates the next layout state
@@ -55,6 +53,7 @@ export type Layouter = {
    * Stop the animation
    */
   stop: () => void
+  node: (id: NodeID) => Node & { position: Coordinates } | undefined
 }
 
 export const layouter = (options?: {
@@ -72,7 +71,6 @@ export const layouter = (options?: {
   maxMove?: number
 }): Layouter => {
   const onPositionListeners: OnPositionsListener[] = []
-  const onMovesListeners: OnMoveListener[] = []
   const nodes: Record<NodeID, Node> = {}
   const force = options?.force ?? 100
   const maxMove = options?.maxMove ?? 10
@@ -85,10 +83,6 @@ export const layouter = (options?: {
       onPositionListeners.push(listener)
       return l
     },
-    onMoves: (listener) => {
-      onMovesListeners.push(listener)
-      return l
-    },
     addNode: (node) => {
       nodes[node.id] = node
       // Place all peers
@@ -97,7 +91,7 @@ export const layouter = (options?: {
           nodes[peer] = {
             id: peer,
             peers: {
-              [node.id]: attraction,
+              [node.id]: attraction, // we need to add myself as a peer here, so this node does not push away from me
             },
           }
         }
@@ -142,24 +136,20 @@ export const layouter = (options?: {
             cause: neighbour.id,
             vector: {
               direction: getNodeDirection(node, neighbour),
-              magnitude: force / 2, // ... halve the distance, because nodes will push each other
+              magnitude: force,
             },
           })
         }
 
         // Move towards peers
-        // FIXME: push apart if too close together, e.g. in iteration 0
         for (const [peerId, attraction] of Object.entries(node.peers)) {
           const peerPosition = newLayout[peerId] ?? [0, 0]
           const distance = pointDistance(nodePos, peerPosition)
-          const desiredDistance = force * attraction
           vectors.push({
             cause: peerId,
             vector: {
               direction: getNodeDirection(node, { id: peerId }),
-              magnitude: (desiredDistance - distance) /
-                // ... halve the attraction, because nodes will attract each other
-                2,
+              magnitude: (force * attraction - distance),
             },
           })
         }
@@ -177,8 +167,6 @@ export const layouter = (options?: {
         }
       }
 
-      onMovesListeners.map((listener) => listener(moves))
-
       // Move the nodes
       for (const [id, { result }] of Object.entries(moves)) {
         const nodePos = newLayout[id] ?? [0, 0]
@@ -194,11 +182,17 @@ export const layouter = (options?: {
 
       layout = newLayout
 
-      onPositionListeners.map((fn) => fn(newLayout))
+      onPositionListeners.map((fn) => fn(newLayout, moves))
+
       return running
     },
     stop: () => {
       running = false
+    },
+    node: (id) => {
+      const node = nodes[id]
+      if (node === undefined) return undefined
+      return { ...node, position: layout[id] }
     },
   }
 
